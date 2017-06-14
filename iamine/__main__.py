@@ -2,7 +2,7 @@
 """Concurrently retrieve metadata from Archive.org items.
 
 usage: ia-mine [--config-file=<FILE>] (<itemlist> | -) [--debug] [--workers WORKERS]
-               [--retries RETRIES] [--secure] [--hosts HOSTS]
+               [--retries RETRIES] [--secure] [--hosts HOSTS] [--census]
        ia-mine [--all | --search QUERY] [[--info | --info --field FIELD...]
                |--num-found | --mine-ids | --field FIELD... | --itemlist]
                [--debug] [--rows ROWS] [--workers WORKERS]
@@ -43,7 +43,7 @@ optional arguments:
                              [default: 10]
   --secure                   Use HTTPS. HTTP is used by default.
   -H, --hosts HOSTS          A file containing a list of hosts to shuffle through.
-
+  --census                   Output data in census format.
 """
 from .utils import suppress_interrupt_messages, suppress_brokenpipe_messages, handle_cli_exceptions
 suppress_interrupt_messages()
@@ -61,6 +61,7 @@ from schema import Schema, Use, Or, SchemaError
 from .api import mine_items, search, configure
 from . import __version__
 from .exceptions import AuthenticationError
+from . import census
 
 
 asyncio_logger = logging.getLogger('asyncio')
@@ -159,7 +160,8 @@ def main(argv=None, session=None):
                    secure=args['--secure'],
                    hosts=args['--hosts'],
                    config_file=args['--config-file'],
-                   debug=args['--debug'])
+                   debug=args['--debug'],
+                   callback=census.callback if args['--census'] else None)
 
 
 if __name__ == '__main__':
