@@ -9,30 +9,50 @@ METADATA_KEYS = ["collection", "publicdate", "noindex"]
 @asyncio.coroutine
 def callback(resp):
     j = yield from resp.json()
+    id = resp.url.split('/')[4]
     resp.close()
+    out = {"id": id}
+    if 'dir' not in j:
+        out["no_dir"] = "true"
+
     if 'files' not in j:
-        out = {"id": j.get("dir", "").split("/")[3], "is_dark": j.get("is_dark")}
-    else:
-        m = j.get("metadata", {})
-        id = m.get("identifier")
-        files = []
-        ts = 0
-        some_private = []
-        for x in j["files"]:
-            if x["source"] != "derivative" and x["name"] != id + "_files.xml":
-                size = int(x.get("size", 0))
-                has_private = maybe_present(x, "private")
-                files.append(dict([(n, x.get(n, "")) for n in FILE_KEYS] +
-                                  [("size", size)] + has_private))
-                ts += size
-                if has_private:
-                    some_private = [("some_private", "true")]
+        out["is_dark"] = j.get("is_dark")
 
-        out = dict([("id", id), ("files", files), ("total_size", ts)] +
-                   some_private + maybe_present(j, "nodownload") +
-                   [(name, m[name]) for name in METADATA_KEYS if name in m])
+    m = j.get("metadata", {})
+    files = []
+    ts = 0
+    some_private = False
+    for x in j.get("files", []):
+        if x["source"] != "derivative" and x["name"] != id + "_files.xml":
+            file_info = {n: x.get(n, "") for n in FILE_KEYS}
+            file_info['size'] = int(x.get("size", 0))
+            if 'private' in x:
+                some_private = True
+                file_info['private'] = x['private']
+            files.append(file_info)
+            ts += file_info['size']
+
+    if files:
+        out["files"] = files
+        out["total_size"] = ts
+
+    if some_private:
+        out['some_private'] = 'true'
+
+    if 'nodownload' in j:
+        out['nodownload'] = j['nodownload']
+
+    for name in METADATA_KEYS:
+        if name in m:
+            out[name] = m[name]
+
+    m_id = m.get("identifier")
+    if m_id and m_id != id:
+        out["metadata_identifier"] = m_id
+
+    if 'dir' in j:
+        dirs = j['dir'].split("/")
+        if len(dirs) < 4 or dirs[3] != id:
+            out['dir'] = j['dir']
+
     print(json.dumps(out))
-
-
-def maybe_present(x, key):
-    return ([(key, x[key])] if key in x else [])
