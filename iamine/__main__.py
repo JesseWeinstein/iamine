@@ -2,7 +2,8 @@
 """Concurrently retrieve metadata from Archive.org items.
 
 usage: ia-mine [--config-file=<FILE>] (<itemlist> | -) [--debug] [--workers WORKERS]
-               [--retries RETRIES] [--secure] [--hosts HOSTS] [--census]
+               [--retries RETRIES] [--secure] [--hosts HOSTS]
+               [--census] [--output-dir=<DIR>] [--timestamp=STRING]
        ia-mine [--all | --search QUERY] [[--info | --info --field FIELD...]
                |--num-found | --mine-ids | --field FIELD... | --itemlist]
                [--debug] [--rows ROWS] [--workers WORKERS]
@@ -63,7 +64,6 @@ from . import __version__
 from .exceptions import AuthenticationError
 from . import census
 
-
 asyncio_logger = logging.getLogger('asyncio')
 asyncio_logger.setLevel(logging.CRITICAL)
 
@@ -102,6 +102,8 @@ def main(argv=None, session=None):
             error='"{}" should be readable'.format(args['<itemlist>'])),
         '--workers': Use(int,
             error='"{}" should be an integer.'.format(args['--workers'])),
+        '--output-dir': Or(None, Use(str)),
+        '--timestamp': Or(None, Use(str)),
     })
     try:
         args = schema.validate(args)
@@ -154,6 +156,9 @@ def main(argv=None, session=None):
             if (not os.fstat(sys.stdin.fileno()).st_size > 0) and (sys.stdin.seekable()):
                 sys.exit(2)
 
+        cb = census.make_callback(args['--output-dir'], args['--timestamp']) \
+             if args['--census'] else None
+
         mine_items(args['<itemlist>'],
                    max_tasks=args['--workers'],
                    retries=args['--retries'],
@@ -161,7 +166,11 @@ def main(argv=None, session=None):
                    hosts=args['--hosts'],
                    config_file=args['--config-file'],
                    debug=args['--debug'],
-                   callback=census.callback if args['--census'] else None)
+                   callback=cb)
+
+        if cb:
+            cb.cleanup()
+        args['<itemlist>'].close()
 
 
 if __name__ == '__main__':
