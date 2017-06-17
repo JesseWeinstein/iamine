@@ -3,32 +3,42 @@ import os.path
 import asyncio
 import json
 
-FILE_KEYS = ["name", "format", "md5", "sha1"]
+TOPLEVEL_KEYS = ['is_dark', 'nodownload']
+FILE_KEYS = ["name", "format"]
 METADATA_KEYS = ["collection", "publicdate", "noindex"]
+HASH_KEYS = ["md5", "sha1"]
 
 
 def make_callback(output_file_dir, timestamp):
 
-    main_file = open(os.path.join(output_file_dir, "census_data_"+timestamp+".json"), 'w')
-    md5_file = open(os.path.join(output_file_dir, "file_hashes_md5_"+timestamp+".tsv"), 'w')
+    def open_file(prefix, suffix):
+        return open(os.path.join(output_file_dir, prefix+timestamp+suffix), 'w')
+
+    main_file = open_file("census_data_", ".json")
+    hash_files = {k: open_file("file_hashes_"+k+"_", ".tsv") for k in HASH_KEYS}
 
     @asyncio.coroutine
     def callback(resp):
         j = yield from resp.json()
         id = resp.url.split('/')[4]
         resp.close()
+
         out = {"id": id}
         if 'dir' not in j:
             out["no_dir"] = "true"
 
-        if 'files' not in j:
-            out["is_dark"] = j.get("is_dark")
+        def copy_over(key, source):
+            if key in source:
+                out[key] = source[key]
+
+        for name in TOPLEVEL_KEYS:
+            copy_over(name, j)
 
         m = j.get("metadata", {})
         files = []
         ts = 0
         some_private = False
-        md5out = []
+        hash_outs = {k: [] for k in HASH_KEYS}
         for x in j.get("files", []):
             if x["source"] != "derivative" and x["name"] != id + "_files.xml":
                 file_info = {n: x.get(n, "") for n in FILE_KEYS}
@@ -38,7 +48,8 @@ def make_callback(output_file_dir, timestamp):
                     file_info['private'] = x['private']
                 files.append(file_info)
                 ts += file_info['size']
-                md5out.append('\t'.join([id, x['name'], x['md5']]))
+                for k in HASH_KEYS:
+                    hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
 
         if files:
             out["files"] = files
@@ -47,12 +58,8 @@ def make_callback(output_file_dir, timestamp):
         if some_private:
             out['some_private'] = 'true'
 
-        if 'nodownload' in j:
-            out['nodownload'] = j['nodownload']
-
-        for name in METADATA_KEYS:
-            if name in m:
-                out[name] = m[name]
+        for name in METADATA_KEYS + HASH_KEYS:
+            copy_over(name, m)
 
         m_id = m.get("identifier")
         if m_id and m_id != id:
@@ -63,20 +70,21 @@ def make_callback(output_file_dir, timestamp):
             if len(dirs) < 4 or dirs[3] != id:
                 out['dir'] = j['dir']
 
-        yield from output_json(out, main_file)
-        yield from output_tsv("\n".join(md5out), md5_file)
+        out_json = json.dumps(out, sort_keys=True, separators=(',', ':'))
+        yield from output(out_json, main_file)
+
+        if files:
+            for k in HASH_KEYS:
+                yield from output("\n".join(hash_outs[k]), hash_files[k])
 
     @asyncio.coroutine
-    def output_json(out, output_file):
-        output_file.write(json.dumps(out, sort_keys=True, separators=(',', ':'))+"\n")
-
-    @asyncio.coroutine
-    def output_tsv(out, output_file):
-        output_file.write(out)
+    def output(out, output_file):
+        output_file.write(out+"\n")
 
     def cleanup():
         main_file.close()
-        md5_file.close()
+        for k in HASH_KEYS:
+            hash_files[k].close()
 
     callback.cleanup = cleanup
 
