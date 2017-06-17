@@ -64,8 +64,11 @@ from . import __version__
 from .exceptions import AuthenticationError
 from . import census
 
+logging.basicConfig(
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s.%(funcName)s: %(message)s',
+    datefmt="%Y-%m-%d %H:%M:%S")
 asyncio_logger = logging.getLogger('asyncio')
-asyncio_logger.setLevel(logging.CRITICAL)
+asyncio_logger.setLevel(logging.DEBUG)
 
 
 def print_itemlist(resp):
