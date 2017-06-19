@@ -3,11 +3,13 @@ import os.path
 import asyncio
 import json
 import logging
+import collections
 
-TOPLEVEL_KEYS = ['is_dark', 'nodownload']
-FILE_KEYS = ["name", "format"]
-METADATA_KEYS = ["collection", "publicdate", "noindex"]
+AVAIL_CATS = ["public", "private", "unavailable"]
 HASH_KEYS = ["md5", "sha1"]
+TOPLEVEL_KEYS = ['is_dark', 'nodownload']
+METADATA_KEYS = ["collection", "publicdate", "noindex"]
+FILE_KEYS = ["name", "format"]
 
 logger = logging.getLogger('census')
 logger.setLevel(logging.DEBUG)
@@ -18,8 +20,9 @@ def make_callback(output_file_dir, timestamp):
     def open_file(prefix, suffix):
         return open(os.path.join(output_file_dir, prefix+timestamp+suffix), 'w')
 
-    main_file = open_file("census_data_", ".json")
-    hash_files = {k: open_file("file_hashes_"+k+"_", ".tsv") for k in HASH_KEYS}
+    main_files = {a: open_file("census_data_"+a+"_", ".json") for a in AVAIL_CATS}
+    hash_files = {a: {k: open_file("file_hashes_"+a+"_"+k+"_", ".tsv") for k in HASH_KEYS}
+                  for a in AVAIL_CATS}
 
     @asyncio.coroutine
     def callback(resp):
@@ -28,10 +31,10 @@ def make_callback(output_file_dir, timestamp):
         j = yield from resp.json()
         resp.close()
 
-        out = {"id": id}
+        out = collections.OrderedDict({"id": id})
 
         if 'dir' not in j:
-            out["no_dir"] = "true"
+            out["no_dir"] = True
         else:
             dirs = j['dir'].split("/")
             if len(dirs) < 4 or dirs[3] != id:
@@ -74,21 +77,28 @@ def make_callback(output_file_dir, timestamp):
                 for k in HASH_KEYS:
                     hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
 
-            if files:
-                out["files"] = files
-                out["total_size"] = ts
-
             if some_private:
                 out['some_private'] = 'true'
 
+            if files:
+                out["total_size"] = ts
+                out["files"] = files
+
         yield from do_files()
 
-        out_json = json.dumps(out, sort_keys=True, separators=(',', ':'))
-        yield from output(out_json, main_file)
+        if 'is_dark' in out or 'no_dir' in out or 'files' not in out:
+            avail = "unavailable"
+        elif 'noindex' in out or 'some_private' in out:
+            avail = "private"
+        else:
+            avail = "public"
+
+        out_json = json.dumps(out, sort_keys=False, separators=(',', ':'))
+        yield from output(out_json, main_files[avail])
 
         if 'files' in out:
             for k in HASH_KEYS:
-                yield from output("\n".join(hash_outs[k]), hash_files[k])
+                yield from output("\n".join(hash_outs[k]), hash_files[avail][k])
         logger.info("Finished "+id)
 
     @asyncio.coroutine
@@ -96,9 +106,10 @@ def make_callback(output_file_dir, timestamp):
         output_file.write(out+"\n")
 
     def cleanup():
-        main_file.close()
-        for k in HASH_KEYS:
-            hash_files[k].close()
+        for a in AVAIL_CATS:
+            main_files[a].close()
+            for k in HASH_KEYS:
+                hash_files[a][k].close()
 
     callback.cleanup = cleanup
 
