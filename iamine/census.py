@@ -86,9 +86,12 @@ def make_callback(output_file_dir, timestamp):
 
         yield from do_files()
 
-        if 'is_dark' in out or 'no_dir' in out or 'files' not in out:
+        if 'files' not in out or \
+           'is_dark' in out or \
+           'no_dir' in out or \
+           'noindex' in out:
             avail = "unavailable"
-        elif 'noindex' in out or 'some_private' in out:
+        elif 'some_private' in out:
             avail = "private"
         else:
             avail = "public"
