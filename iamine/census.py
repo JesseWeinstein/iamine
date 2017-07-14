@@ -27,7 +27,7 @@ def make_callback(output_file_dir, timestamp):
     @asyncio.coroutine
     def callback(resp):
         id = resp.url.split('/')[4]
-        logger.info('Got metadata for ' + id)
+        logger.info(id)
         j = yield from resp.json()
         resp.close()
 
@@ -63,6 +63,7 @@ def make_callback(output_file_dir, timestamp):
 
         @asyncio.coroutine
         def do_files():
+            logger.info(id)
             files = []
             ts = 0
             some_private = False
@@ -97,16 +98,18 @@ def make_callback(output_file_dir, timestamp):
             avail = "public"
 
         out_json = json.dumps(out, sort_keys=False, separators=(',', ':'))
-        yield from output(out_json, main_files[avail])
+
+        @asyncio.coroutine
+        def do_output(out, output_file):
+            logger.info(id + ' -> ' + output_file.name)
+            output_file.write(out+"\n")
+
+        yield from do_output(out_json, main_files[avail])
 
         if 'files' in out:
             for k in HASH_KEYS:
-                yield from output("\n".join(hash_outs[k]), hash_files[avail][k])
-        logger.info("Finished "+id)
-
-    @asyncio.coroutine
-    def output(out, output_file):
-        output_file.write(out+"\n")
+                yield from do_output("\n".join(hash_outs[k]), hash_files[avail][k])
+        logger.info(id + " DONE!")
 
     def cleanup():
         for a in AVAIL_CATS:
