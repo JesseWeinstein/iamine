@@ -76,7 +76,10 @@ def make_callback(output_file_dir, timestamp):
                 files[-1]['size'] = int(x.get("size", 0))
                 ts += files[-1]['size']
                 for k in HASH_KEYS:
-                    hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
+                    if k not in x:
+                        logger.warning('File {0[name]} in {1} has no {2} hash!'.format(x, id, k))
+                    else:
+                        hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
 
             if some_private:
                 out['some_private'] = 'true'
