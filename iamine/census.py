@@ -53,7 +53,7 @@ def make_callback(output_file_dir, timestamp):
 
         m = j.get("metadata", {})
 
-        copy_multiple_over(METADATA_KEYS + HASH_KEYS, m)
+        copy_multiple_over(METADATA_KEYS, m)
 
         m_id = m.get("identifier")
         if m_id and m_id != id:
@@ -70,7 +70,7 @@ def make_callback(output_file_dir, timestamp):
             for x in j.get("files", []):
                 if x["source"] == "derivative" or x["name"] == id + "_files.xml":
                     continue
-                files.append({n: x.get(n, "") for n in FILE_KEYS})
+                files.append({n: x.get(n, "") for n in FILE_KEYS + HASH_KEYS})
                 if copy_over('private', x, files[-1]):
                     some_private = True
                 files[-1]['size'] = int(x.get("size", 0))
