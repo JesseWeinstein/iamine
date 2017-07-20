@@ -159,7 +159,7 @@ def main(argv=None, session=None):
             if (not os.fstat(sys.stdin.fileno()).st_size > 0) and (sys.stdin.seekable()):
                 sys.exit(2)
 
-        cb = census.make_callback(args['--output-dir'], args['--timestamp']) \
+        cb = census.make_callback(args['--output-dir'] or '.', args['--timestamp'] or '') \
              if args['--census'] else None
 
         mine_items(args['<itemlist>'],
