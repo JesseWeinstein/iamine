@@ -77,7 +77,10 @@ def make_callback(output_file_dir, timestamp):
                 ts += files[-1]['size']
                 for k in HASH_KEYS:
                     if k not in x:
-                        logger.warning('File {0[name]} in {1} has no {2} hash!'.format(x, id, k))
+                        logger.warning('File "{0[name]}" in {1} has no {2} hash!'.format(x, id, k))
+                    elif type(x[k]) != str:
+                        logger.warning('File "{0[name]}" in {1} has multiple {2} hashes: {3}'
+                                       .format(x, id, k, x[k]))
                     else:
                         hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
 
