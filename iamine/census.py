@@ -31,7 +31,7 @@ def make_callback(output_file_dir, timestamp):
 
         def non_strict_json_loads(x):
             return json.loads(x, strict=False)
-        j = yield from resp.json(loads=non_strict_json_loads)
+        j = yield from resp.json(encoding="utf8", loads=non_strict_json_loads)
         resp.close()
 
         out = collections.OrderedDict({"id": id})
