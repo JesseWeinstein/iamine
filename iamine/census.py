@@ -28,7 +28,10 @@ def make_callback(output_file_dir, timestamp):
     def callback(resp):
         id = resp.url.split('/')[4]
         logger.info(id)
-        j = yield from resp.json()
+
+        def non_strict_json_loads(x):
+            return json.loads(x, strict=False)
+        j = yield from resp.json(loads=non_strict_json_loads)
         resp.close()
 
         out = collections.OrderedDict({"id": id})
