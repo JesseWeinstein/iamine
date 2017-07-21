@@ -15,6 +15,10 @@ logger = logging.getLogger('census')
 logger.setLevel(logging.DEBUG)
 
 
+def non_strict_json_loads(x):
+    return json.loads(x, strict=False)
+
+
 def make_callback(output_file_dir, timestamp):
 
     def open_file(prefix, suffix):
@@ -28,9 +32,10 @@ def make_callback(output_file_dir, timestamp):
     def callback(resp):
         id = resp.url.split('/')[4]
         logger.info(id)
-
-        def non_strict_json_loads(x):
-            return json.loads(x, strict=False)
+        if resp.status != 200:
+            logger.warning('HTTP status for ' + id + ' was ' + str(resp.status) + '. Giving up.')
+            resp.close()
+            return
         j = yield from resp.json(encoding="utf8", loads=non_strict_json_loads)
         resp.close()
 
