@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import collections
+import urllib.parse
 
 AVAIL_CATS = ["public", "private", "unavailable"]
 HASH_KEYS = ["md5", "sha1"]
@@ -90,7 +91,7 @@ def make_callback(output_file_dir, timestamp):
                         logger.warning('File "{0[name]}" in {1} has multiple {2} hashes: {3}'
                                        .format(x, id, k, x[k]))
                     else:
-                        hash_outs[k].append('\t'.join([id, x['name'], x[k]]))
+                        hash_outs[k].append('\t'.join([id, urllib.parse.quote(x['name']), x[k]]))
 
             if some_private:
                 out['some_private'] = 'true'
