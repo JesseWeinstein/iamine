@@ -95,11 +95,20 @@ class Actions:
                     id, rest = whole.split('\t', 1)
                     out.write('\t'.join([id, urllib.parse.quote(rest[:-idx]), rest[-idx+1:]]))
 
+                n = 0
                 for l in f:
+                    n += 1
+                    if (n % 10000) == 0:
+                        sys.stderr.write('.')
+                        sys.stderr.flush()
+                    if (n % 1000000) == 0:
+                        sys.stderr.write('\n')
+                        sys.stderr.flush()
                     if len(whole) >= idx and whole[-idx] == '\t' and whole[-idx+1:-1].isalnum():
                         write()
                         whole = ''
                     whole += l
+                sys.stderr.write('\n')
                 write()
                 f.close()
                 out.close()
