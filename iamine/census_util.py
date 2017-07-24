@@ -65,9 +65,10 @@ class Actions:
                             break
 
                         fitm = itm['files'][n]
-                        if fitm['name'] != hlines[h][1]:
-                            logger.error("File out of order! ({0[name]} != {1})".format(
-                                fitm, hlines[h][1]))
+                        fname = urllib.parse.quote(fitm['name'])
+                        if fname != hlines[h][1]:
+                            logger.error("File out of order! ({0} != {1})".format(
+                                fname, hlines[h][1]))
                             return
                         fitm[h] = hlines[h][2][:-1]
                         n += 1
