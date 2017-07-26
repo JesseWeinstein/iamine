@@ -12,7 +12,7 @@ KINDS = ['unavailable', 'public', 'private']
 
 
 def normalize_newlines(s):
-    return s.replace('%0A', '[newline]').replace('%0D', '[newline]')
+    return s.replace('%0D%0A', '[newline]').replace('%0A', '[newline]').replace('%0D', '[newline]')
 
 
 class Actions:
@@ -124,7 +124,7 @@ class Actions:
                             else:
                                 logger.error("File out of order! ({0} != {1})".format(
                                    fname, hlines[h][1]))
-                                return
+                                sys.exit(1)
                         outs[h].write('\t'.join(hlines[h]))
                         hlines[h] = f.readline().split('\t')
                         n += 1
