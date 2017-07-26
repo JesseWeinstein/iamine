@@ -107,12 +107,14 @@ class Actions:
                 line = cd.readline()
                 if not line:
                     break
-                sys.stderr.write(line[:50]+'\n')
-                try:
-                    itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
-                except KeyboardInterrupt:
-                    logger.error("Item took too long: " + line[:100])
-                    sys.exit(1)
+                itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
+                n += 1
+                if (n % 1000) == 0:
+                    sys.stderr.write('.')
+                    sys.stderr.flush()
+                if (n % 100000) == 0:
+                    sys.stderr.write('\n')
+                    sys.stderr.flush()
 
                 for (h, f) in fhs.items():
                     itmIdx = 0
@@ -133,13 +135,6 @@ class Actions:
                                 sys.exit(1)
                         outs[h].write('\t'.join(hlines[h]))
                         hlines[h] = f.readline().split('\t')
-                        n += 1
-                        if (n % 10) == 0:
-                            sys.stderr.write('.')
-                            sys.stderr.flush()
-                        if (n % 1000000) == 0:
-                            sys.stderr.write('\n')
-                            sys.stderr.flush()
             sys.stderr.write('\n')
             cd.close()
             for h in fhs:
