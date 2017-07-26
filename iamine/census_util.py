@@ -48,6 +48,24 @@ class Actions:
             logger.info('Remaining: ' + str(len(expected)))
         print(''.join(sorted(expected)))
 
+    def action_show_missing_from_hashes(self, piece_prefix, hash):
+        logger = logging.getLogger('show_missing_from_hashes')
+        expected = set(open(piece_prefix + self.piece).readlines())
+        for kind in KINDS:
+            tmp = set()
+            logger.info(kind + '_' + hash)
+            for x in open(self.fh_filename(kind, hash)):
+                tmp.add(x.split('\t')[0]+'\n')
+                if len(tmp) > 1000:
+                    sys.stderr.write('.')
+                    sys.stderr.flush()
+                    expected.difference_update(tmp)
+                    tmp.clear()
+            sys.stderr.write('\n')
+            expected.difference_update(tmp)
+            logger.info('Remaining: ' + str(len(expected)))
+        print(''.join(sorted(expected)))
+
     def action_copy_hashes(self):
         logger = logging.getLogger('copy_hashes')
         for kind in KINDS:
