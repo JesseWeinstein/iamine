@@ -107,7 +107,12 @@ class Actions:
                 line = cd.readline()
                 if not line:
                     break
-                itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
+                try:
+                    itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
+                except KeyboardInterrupt:
+                    logger.error("Item took too long: " + line[:100])
+                    sys.exit(1)
+
                 for (h, f) in fhs.items():
                     itmIdx = 0
                     while True:
