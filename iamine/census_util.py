@@ -107,6 +107,7 @@ class Actions:
                 line = cd.readline()
                 if not line:
                     break
+                sys.stderr.write(line[:50]+'\n')
                 try:
                     itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
                 except KeyboardInterrupt:
@@ -133,7 +134,7 @@ class Actions:
                         outs[h].write('\t'.join(hlines[h]))
                         hlines[h] = f.readline().split('\t')
                         n += 1
-                        if (n % 10000) == 0:
+                        if (n % 10) == 0:
                             sys.stderr.write('.')
                             sys.stderr.flush()
                         if (n % 1000000) == 0:
