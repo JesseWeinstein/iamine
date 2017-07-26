@@ -11,6 +11,10 @@ HASHES = ['md5', 'sha1']
 KINDS = ['unavailable', 'public', 'private']
 
 
+def normalize_newlines(s):
+    return s.replace('%0A', '[newline]').replace('%0D', '[newline]')
+
+
 class Actions:
     def __init__(self, results_dir, group_name, piece):
         self.results_dir = results_dir
@@ -53,33 +57,88 @@ class Actions:
             fhs = {hash: open(self.fh_filename(kind, hash)) for hash in HASHES}
             hlines = {hash: f.readline().split('\t') for (hash, f) in fhs.items()}
             out = open(cd_fn+'.new', 'w')
+            n = 0
             while True:
                 line = cd.readline()
                 if not line:
                     break
                 itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
                 for (h, f) in fhs.items():
-                    n = 0
+                    itmIdx = 0
                     while True:
                         if hlines[h][0] != itm['id']:
                             break
 
-                        fitm = itm['files'][n]
+                        fitm = itm['files'][itmIdx]
+                        itmIdx += 1
                         fname = urllib.parse.quote(fitm['name'])
                         if fname != hlines[h][1]:
                             logger.error("File out of order! ({0} != {1})".format(
                                 fname, hlines[h][1]))
                             return
                         fitm[h] = hlines[h][2][:-1]
-                        n += 1
                         hlines[h] = f.readline().split('\t')
-
+                        n += 1
+                        if (n % 10000) == 0:
+                            sys.stderr.write('.')
+                            sys.stderr.flush()
+                        if (n % 1000000) == 0:
+                            sys.stderr.write('\n')
+                            sys.stderr.flush()
                 json.dump(itm, out, sort_keys=False, separators=(',', ':'))
                 out.write('\n')
+            sys.stderr.write('\n')
             cd.close()
             for f in fhs.values():
                 f.close()
             out.close()
+
+    def action_fix_filename_newlines(self):
+        logger = logging.getLogger('fix_filename_newlines')
+        for kind in KINDS:
+            cd_fn = self.census_data_filename(kind)
+            logger.info(os.path.basename(cd_fn))
+            cd = open(cd_fn)
+            fhs = {hash: open(self.fh_filename(kind, hash)) for hash in HASHES}
+            hlines = {hash: f.readline().split('\t') for (hash, f) in fhs.items()}
+            outs = {hash: open(self.fh_filename(kind, hash)+'.new', 'w') for hash in HASHES}
+            n = 0
+            while True:
+                line = cd.readline()
+                if not line:
+                    break
+                itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
+                for (h, f) in fhs.items():
+                    itmIdx = 0
+                    while True:
+                        if hlines[h][0] != itm['id']:
+                            break
+
+                        fitm = itm['files'][itmIdx]
+                        itmIdx += 1
+                        fname = urllib.parse.quote(fitm['name'])
+                        if fname != hlines[h][1]:
+                            if normalize_newlines(fname) == normalize_newlines(hlines[h][1]):
+                                logger.info("Fixing {0}".format(fname))
+                                hlines[h][1] = fname
+                            else:
+                                logger.error("File out of order! ({0} != {1})".format(
+                                   fname, hlines[h][1]))
+                                return
+                        outs[h].write('\t'.join(hlines[h]))
+                        hlines[h] = f.readline().split('\t')
+                        n += 1
+                        if (n % 10000) == 0:
+                            sys.stderr.write('.')
+                            sys.stderr.flush()
+                        if (n % 1000000) == 0:
+                            sys.stderr.write('\n')
+                            sys.stderr.flush()
+            sys.stderr.write('\n')
+            cd.close()
+            for h in fhs:
+                fhs[h].close()
+                outs[h].close()
 
     def action_urlencode_hash_filenames(self):
         logger = logging.getLogger('urlencode_hash_filenames')
@@ -87,7 +146,7 @@ class Actions:
             for hash in HASHES:
                 idx = (34 if hash == 'md5' else 42)
                 filename = self.fh_filename(kind, hash)
-                f = open(filename)
+                f = open(filename, 'rb')
                 out = open(filename+'.new', 'w')
                 whole = ""
                 logger.info(filename)
