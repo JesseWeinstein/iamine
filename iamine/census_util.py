@@ -15,6 +15,11 @@ def normalize_newlines(s):
     return s.replace('%0D%0A', '[newline]').replace('%0A', '[newline]').replace('%0D', '[newline]')
 
 
+def progress_dot(s="."):
+    sys.stderr.write(s)
+    sys.stderr.flush()
+
+
 class Actions:
     def __init__(self, results_dir, group_name, piece):
         self.results_dir = results_dir
@@ -39,29 +44,42 @@ class Actions:
             for x in open(filename):
                 tmp.add(json.loads(x)['id']+'\n')
                 if len(tmp) > 1000:
-                    sys.stderr.write('.')
-                    sys.stderr.flush()
+                    progress_dot()
                     expected.difference_update(tmp)
                     tmp.clear()
-            sys.stderr.write('\n')
+            progress_dot('\n')
             expected.difference_update(tmp)
             logger.info('Remaining: ' + str(len(expected)))
         print(''.join(sorted(expected)))
 
-    def action_show_missing_from_hashes(self, piece_prefix, hash):
+    def action_show_missing_from_hashes(self, hash):
         logger = logging.getLogger('show_missing_from_hashes')
-        expected = set(open(piece_prefix + self.piece).readlines())
+        expected = set()
         for kind in KINDS:
-            tmp = set()
             logger.info(kind + '_' + hash)
+            n = 0
+            for x in open(self.census_data_filename(kind)):
+                n += 1
+                if (n % 1000) == 0:
+                    progress_dot()
+                if (n % 100000) == 0:
+                    progress_dot('\n')
+
+                j = json.loads(x)
+                if j.get('files', []):
+                    expected.add(j['id']+'\n')
+
+            progress_dot('\n')
+            logger.info('Starting: ' + str(len(expected)))
+
+            tmp = set()
             for x in open(self.fh_filename(kind, hash)):
                 tmp.add(x.split('\t')[0]+'\n')
                 if len(tmp) > 1000:
-                    sys.stderr.write('.')
-                    sys.stderr.flush()
+                    progress_dot()
                     expected.difference_update(tmp)
                     tmp.clear()
-            sys.stderr.write('\n')
+            progress_dot('\n')
             expected.difference_update(tmp)
             logger.info('Remaining: ' + str(len(expected)))
         print(''.join(sorted(expected)))
@@ -98,14 +116,12 @@ class Actions:
                         hlines[h] = f.readline().split('\t')
                         n += 1
                         if (n % 10000) == 0:
-                            sys.stderr.write('.')
-                            sys.stderr.flush()
+                            progress_dot()
                         if (n % 1000000) == 0:
-                            sys.stderr.write('\n')
-                            sys.stderr.flush()
+                            progress_dot("\n")
                 json.dump(itm, out, sort_keys=False, separators=(',', ':'))
                 out.write('\n')
-            sys.stderr.write('\n')
+            progress_dot('\n')
             cd.close()
             for f in fhs.values():
                 f.close()
@@ -128,11 +144,9 @@ class Actions:
                 itm = json.loads(line, strict=False, object_pairs_hook=collections.OrderedDict)
                 n += 1
                 if (n % 1000) == 0:
-                    sys.stderr.write('.')
-                    sys.stderr.flush()
+                    progress_dot()
                 if (n % 100000) == 0:
-                    sys.stderr.write('\n')
-                    sys.stderr.flush()
+                    progress_dot('\n')
 
                 for (h, f) in fhs.items():
                     itmIdx = 0
@@ -153,7 +167,7 @@ class Actions:
                                 sys.exit(1)
                         outs[h].write('\t'.join(hlines[h]))
                         hlines[h] = f.readline().split('\t')
-            sys.stderr.write('\n')
+            progress_dot('\n')
             cd.close()
             for h in fhs:
                 fhs[h].close()
@@ -178,16 +192,14 @@ class Actions:
                 for l in f:
                     n += 1
                     if (n % 10000) == 0:
-                        sys.stderr.write('.')
-                        sys.stderr.flush()
+                        progress_dot()
                     if (n % 1000000) == 0:
-                        sys.stderr.write('\n')
-                        sys.stderr.flush()
+                        progress_dot('\n')
                     if len(whole) >= idx and whole[-idx] == '\t' and whole[-idx+1:-1].isalnum():
                         write()
                         whole = ''
                     whole += l
-                sys.stderr.write('\n')
+                progress_dot('\n')
                 write()
                 f.close()
                 out.close()
