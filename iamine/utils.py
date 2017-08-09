@@ -20,8 +20,14 @@ def suppress_interrupt_messages():
     sys.excepthook = new_hook
 
 
+def handle_pdb(sig, frame):
+    import pdb
+    pdb.Pdb().set_trace(frame)
+
+
 def suppress_brokenpipe_messages():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGUSR1, handle_pdb)
 
 
 def handle_cli_exceptions():
