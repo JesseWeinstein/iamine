@@ -64,8 +64,8 @@ class MineRequest(object):
         retries = 0
         while retries < self.max_retries:
             try:
-                resp = yield from aiohttp.request(self.method, self.url,
-                                                  **self.request_kwargs)
+                resp = yield from asyncio.wait_for(aiohttp.request(self.method, self.url,
+                                                   **self.request_kwargs), 60*5)
                 return (yield from self._handle_response(resp))
             except Exception as exc:
                 retries += 1
